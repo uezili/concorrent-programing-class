@@ -44,7 +44,8 @@ Utilizar as seguintes classes:
 - Carros.
 - Caminhões.
 - Pontes
-  Ao final da execução deve ser exibidos:
+  
+Ao final da execução deve ser exibidos:
 
 1. Quantidade de veículos (carros e caminhões) que cruzaram cada sentido.
 2. Tempo mínimo, máximo e médio de espera dos veículos na fila.
