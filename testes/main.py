@@ -48,7 +48,6 @@ def gera_carros():
         carros.append(threading.Thread(target=travessia_carro, args=(sentido,), name=f"Carro {i+1}"))
         time.sleep(tempo_chegada)
         carros[i].start()
-        print(carros[i])
 
     # Espera todas as threads terminarem
     for carro in carros:

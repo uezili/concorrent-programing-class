@@ -1,62 +1,90 @@
 import threading
 import time
+from caminhao import Caminhao
+from carros import Carro
+from random import choice
 
 
-TA_MAX = 3
-TC = 5
-
+Ta_max = 3
 
 class Ponte:
-    def __init__(self, P):
+    def __init__(self, P, Tc, Tt, Ts):
         self.max_carros_na_ponte = 5
         self.carros_na_ponte = 0
         self.mutex = threading.Lock()
-        self.condition = threading.Condition(self.mutex)
+        self.condicao = threading.Condition(self.mutex)
         self.carros_cruzados_ida = 0
         self.carros_cruzados_volta = 0
+        self.caminhoes_cruzados_ida = 0
+        self.caminhoes_cruzados_volta = 0
         self.tempo_espera_total = 0
         self.tempo_utilizacao_ponte = 0
         self.tempo_total = 0
         self.P = P
-        self.carros_atravessados = 0
-        self.sentido_atual = "ida"
+        self.carros_atravessados_ida = 0
+        self.carros_atravessados_volta = 0
+        self.caminhoes_atravessados_ida = 0
+        self.caminhoes_atravessados_volta = 0
+        self.sentido_atual = choice(["ida","volta"])
+        self.Tc = Tc
+        self.Tt = Tt
+        self.Ts = Ts
 
-    def atravessar(self, carro):
+    def atravessar(self, veiculo):
         self.mutex.acquire()
 
-        while self.carros_na_ponte >= self.max_carros_na_ponte or self.sentido_atual != carro.sentido:
-            self.condition.wait()
+        while self.carros_na_ponte >= self.max_carros_na_ponte or self.sentido_atual != veiculo.sentido:
+            self.condicao.wait()
 
         self.carros_na_ponte += 1
-        self.carros_atravessados += 1
-        self.condition.notifyAll()
+        if veiculo.sentido == "ida":
+            if isinstance(veiculo, Carro):
+                self.carros_atravessados_ida += 1
+            elif isinstance(veiculo, Caminhao):
+                self.caminhoes_atravessados_ida += 1
+        else:
+            if isinstance(veiculo, Carro):
+                self.carros_atravessados_volta += 1
+            elif isinstance(veiculo, Caminhao):
+                self.caminhoes_atravessados_volta += 1
+
+        if self.carros_atravessados_ida == self.P and self.sentido_atual == "ida":
+            self.sentido_atual = "volta"
+            self.carros_atravessados_ida = 0
+        elif self.carros_atravessados_volta == self.P and self.sentido_atual == "volta":
+            self.sentido_atual = "ida"
+            self.carros_atravessados_volta = 0
+
+        time.sleep(self.Ts)
+
+        self.condicao.notifyAll()
         self.mutex.release()
 
-        if carro.sentido == "ida":
-            tempo_inicial = time.time()
-            time.sleep(TC)
-            tempo_final = time.time()
-            print(
-                f"Carro -> {carro.identificador} atravessou a ponte no sentido {carro.sentido}")
+        # print(f"{veiculo.__class__.__name__} {veiculo.identificador} atravessando a ponte no sentido {veiculo.sentido}")
+        tempo_inicial = time.time()
+        if isinstance(veiculo, Caminhao):
+            time.sleep(self.Tt)
         else:
-            tempo_inicial = time.time()
-            time.sleep(TC)
-            tempo_final = time.time()
-            print(
-                f"Carro <- {carro.identificador} atravessou a ponte no sentido {carro.sentido}")
+            time.sleep(self.Tc)
+        tempo_final = time.time()
+        print(f"{veiculo.__class__.__name__} {'-->' if veiculo.sentido == 'ida' else '<--'} {veiculo.identificador} atravessou a ponte no sentido {veiculo.sentido}")
 
         self.mutex.acquire()
         self.carros_na_ponte -= 1
-        if carro.sentido == "ida":
-            self.carros_cruzados_ida += 1
+        if veiculo.sentido == "ida":
+            if isinstance(veiculo, Carro):
+                self.carros_cruzados_ida += 1
+            elif isinstance(veiculo, Caminhao):
+                self.caminhoes_cruzados_ida += 1
         else:
-            self.carros_cruzados_volta += 1
-        self.tempo_espera_total += tempo_inicial - (carro.identificador * TA_MAX)
-        self.tempo_utilizacao_ponte += tempo_final - tempo_inicial
-        self.tempo_total += tempo_final - (carro.identificador * TA_MAX)
+            if isinstance(veiculo, Carro):
+                self.carros_cruzados_volta += 1
+            elif isinstance(veiculo, Caminhao):
+                self.caminhoes_cruzados_volta += 1
 
-        if self.carros_atravessados >= self.P:
-            self.sentido_atual = "volta" if self.sentido_atual == "ida" else "ida"
-            self.carros_atravessados = 0
-        self.condition.notifyAll()
+        self.tempo_espera_total += tempo_inicial - (veiculo.identificador * Ta_max)
+        self.tempo_utilizacao_ponte += tempo_final - tempo_inicial
+        self.tempo_total += tempo_final - (veiculo.identificador * Ta_max)
+
+        self.condicao.notifyAll()
         self.mutex.release()
